@@ -1,6 +1,6 @@
 'use strict';
-$(function(){
-    const version = '1.2.2';
+(() => {
+    const version = '2.0 (alpha)';
     const botRun = {
         'canceled': false,
         'pages': [],
@@ -11,15 +11,11 @@ $(function(){
         'nsChecks': 0,
     };
     
-    const fromKey = 'from';
-    const toKey = 'to';
-    const titleKey = 'title';
     const lag = 3;
     const editsPerMinute = 80;
     const continueLag = 5000;
     const api = new mw.Api();
-    const username = mw.config.get('wgUserName');
-    const botEditButton = $('<li><a href="#">Bot edit</a></li>');
+    const username = 'Mr. Botfleet Command';
     const nsObject = mw.config.get('wgFormattedNamespaces');
     const validNamespaces = Object.keys(nsObject).filter((ns) => ns >= 0);
     const formElements = [
@@ -42,52 +38,59 @@ $(function(){
         $(formElements.join(', ')).removeAttr('disabled');
     }
     
-    $('#my-tools-menu').prepend(botEditButton);
-    botEditButton.on('click', () => {
-        const botName = prompt('Enter your bot name');
-        const botPassword = prompt('Enter your bot password');
+    const botName = prompt('Enter your bot name');
+    const botPassword = prompt('Enter your bot password');
+
+
+
+
+    function api(params){
+        params.format = 'json';
+        if (!params.action){
+            params.action = 'query'
+        }
+        const queryString = new URLSearchParams(params).toString();
+        return fetch(`https://${wiki}.fandom.com/api.php?${queryString}`);
+    }
+
+
+    api({
         
-        api.get({
-            'meta': 'tokens',
-            'type': 'login',
-        }).done(tokenData => {
-            api.post({
-                'action': 'login',
-                'lgname': botName,
-                'lgpassword': botPassword,
-                'lgtoken': tokenData.query.tokens.logintoken,
-                // 'assert': 'bot',
-            }).done(data => {
-                console.log(data);
-                createModal();
-                log(data.login.result);
-                log(JSON.stringify(data));
-                
-                if (data.warnings){
-                    log(`Warning: ${data.warnings.main['*']}`, 'warn');
-                }
-            }).fail((code, data) => {
-                createModal();
-                log(`Error: ${code}: ${typeof data}`, 'error');
-                console.log(data);
-                log(JSON.stringify(data));
-            });
+    }).then(() => {
+        
+    });
+
+
+
+    
+
+    
+    api.get({
+        'meta': 'tokens',
+        'type': 'login',
+    }).done(tokenData => {
+        api.post({
+            'action': 'login',
+            'lgname': botName,
+            'lgpassword': botPassword,
+            'lgtoken': tokenData.query.tokens.logintoken,
+            // 'assert': 'bot',
+        }).done(data => {
+            console.log(data);
+            createModal();
+            log(data.login.result);
+            log(JSON.stringify(data));
+            
+            if (data.warnings){
+                log(`Warning: ${data.warnings.main['*']}`, 'warn');
+            }
+        }).fail((code, data) => {
+            createModal();
+            log(`Error: ${code}: ${typeof data}`, 'error');
+            console.log(data);
+            log(JSON.stringify(data));
         });
     });
-    
-    function txtArea(id, txt = ''){
-        const disabled = (id === 'myModalLog') ? ' disabled' : '';
-        return $(`<textarea id="${id}" rows="4"${disabled}>`).text(txt);
-    }
-    
-    function button(id, txt, secondary = false){
-        const classes = ['wds-button'];
-        if (secondary){
-            classes.push('wds-is-secondary');
-        }
-        const classString = classes.join(' ');
-        return $(`<button class="${classString}" id="${id}">`).text(txt);
-    }
     
     function createModal(){
         $('#myModal').on('submit', submitForm);
@@ -288,8 +291,8 @@ $(function(){
                 return;
             }
             
-            if (result['continue']){
-                searchWiki(ns, result['continue'].gapcontinue);
+            if (result.continue){
+                searchWiki(ns, result.continue.gapcontinue);
             } else {
                 botRun.nsChecks++;
             }
@@ -406,14 +409,14 @@ $(function(){
             if (data.edit){
                 log(`${i + 1}/${botRun.pages.length}: ${data.edit.result}: "${data.edit.title}"`);
             } else if (data.move){
-                log(`${i + 1}/${botRun.pages.length}: "${data.move[fromKey]}" to "${data.move[toKey]}"`);
+                log(`${i + 1}/${botRun.pages.length}: "${data.move.from}" to "${data.move.to}"`);
             } else {
                 log(JSON.stringify(data));
             }
             
             next(0, i);
         }).fail((code, data) => {
-            const title = (botRun.mode === 'move') ? params[fromKey] : params[titleKey];
+            const title = (botRun.mode === 'move') ? params.from : params.title;
             const errorPrefix = `${i + 1}/${botRun.pages.length}: Error: ${code}: "${title}": `;
             
             if (code === 'maxlag'){
@@ -467,4 +470,4 @@ $(function(){
     function resubmit(params, i){
         setTimeout(() => submitAction(params, i), continueLag);
     }
-});
+})();

@@ -1,6 +1,6 @@
 'use strict';
 (async () => {
-    const version = '2.1.6 (alpha)';
+    const version = '2.1.7 (alpha)';
     const botRun = {
         'canceled': false,
         'pages': [],
@@ -30,7 +30,7 @@
     ];
     
     $(formElements.join(', ')).attr('disabled', true);
-    $('#myModalPickWiki').on('click', () => {
+    $('#myModalPickWiki').on('click', async () => {
         $('#myModalWiki, #myModalPickWiki').attr('disabled', true);
         wiki = wikiDropDown.value;
         const nsListAll = await api.get({

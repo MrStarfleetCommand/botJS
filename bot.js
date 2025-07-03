@@ -186,9 +186,7 @@
         let local;
         let crossWiki;
         if (botRun.mode !== 'move'){
-            const server = mw.config.get('wgServerName');
-            const lang = mw.config.get('wgContentLanguage');
-            local = botRun.monolith.wiki[`${server}/${lang}`] || {};
+            local = botRun.monolith.wiki[wiki] || {};
             crossWiki = botRun.monolith.general;
             const catchAll = crossWiki['-1'];
             const localAll = local['-1'];

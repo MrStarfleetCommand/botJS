@@ -1,6 +1,6 @@
 'use strict';
 (async () => {
-    const version = '2.1.9 (alpha)';
+    const version = '2.1.10 (alpha)';
     const botRun = {
         'canceled': false,
         'pages': [],
@@ -10,6 +10,8 @@
         'mode': undefined,
         'nsChecks': 0,
         'validNamespaces': [],
+        'username': undefined,
+        'tokens': {},
     };
     
     document.querySelector('h1').innerText = `botJS, version ${version}`;
@@ -40,21 +42,18 @@
         botRun.validNamespaces = Object.keys(nsListAll.query.namespaces).filter(ns => ns >= 0);
         document.getElementById('myModalNamespaces').value = botRun.validNamespaces.join('\n');
         
-        const username = prompt('Enter your bot\'s username');
+        botRun.username = prompt('Enter your bot\'s username');
         const botName = prompt('Enter your bot name');
         const botPassword = prompt('Enter your bot password');
-        const tokenData = await api.get({
-            'meta': 'tokens',
-            'type': 'csrf|login',
-        });
+        alert(`${wiki}/api.php?action=query&meta=tokens&type=csrf|login`);
+        botRun.tokens.csrftoken = prompt('Enter the csrf token');
+        botRun.tokens.logintoken = prompt('Enter the login token');
         
-        console.log(tokenData);
-        console.log(tokenData.query.tokens.logintoken);
         const loginData = await api.post({
             'action': 'login',
-            'lgname': `${username}@${botName}`,
+            'lgname': `${botRun.username}@${botName}`,
             'lgpassword': botPassword,
-            'lgtoken': tokenData.query.tokens.logintoken,
+            'lgtoken': botRun.tokens.logintoken,
         });
         
         log(JSON.stringify(loginData));
@@ -272,13 +271,13 @@
                 const allowedBots =
                     (pageContent.search(allowedBotsRegexp) !== -1) ?
                     allowSplit[1].split('}}')[0].split(',')
-                    : [username];
+                    : [botRun.username];
                 
                 const notNoBots = pageContent.search(nobots1) === -1;
                 const notBotsAllowNone = pageContent.search(nobots2) === -1;
                 const notBotsDenyAll = pageContent.search(nobots3) === -1;
-                const botNotDenied = deniedBots.indexOf(username) === -1;
-                const botAllowed = allowedBots.indexOf(username) !== -1;
+                const botNotDenied = deniedBots.indexOf(botRun.username) === -1;
+                const botAllowed = allowedBots.indexOf(botRun.username) !== -1;
                 const isWikitext = cm === 'wikitext';
                 const authorizedBot =
                     notNoBots &&
@@ -363,7 +362,7 @@
                 'noredirect': 1,
                 'maxlag': lag,
                 'assert': 'bot',
-                'token': tokenData.query.tokens.csrftoken,
+                'token': botRun.tokens.csrftoken,
             };
         } else {
             const text = botRun.pages[i].content;
@@ -393,7 +392,7 @@
                 'summary': editSummary,
                 'maxlag': lag,
                 'assert': 'bot',
-                'token': tokenData.query.tokens.csrftoken,
+                'token': botRun.tokens.csrftoken,
             };
         }
         

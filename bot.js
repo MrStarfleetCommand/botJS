@@ -44,14 +44,27 @@
 
 
 
-    function api(params){
-        params.format = 'json';
-        if (!params.action){
-            params.action = 'query'
-        }
-        const queryString = new URLSearchParams(params).toString();
-        return fetch(`https://${wiki}.fandom.com/api.php?${queryString}`);
+
+
+class Api {
+    constructor(){
+        this.get = (params) => {
+            params.format = 'json';
+            if (!params.action){
+                params.action = 'query';
+            }
+            
+            const queryString = new URLSearchParams(params).toString();
+            return fetch(`${wiki}/api.php?${queryString}`);
+        };
     }
+}
+
+const api = new Api();
+
+
+    
+
 
 
     api({

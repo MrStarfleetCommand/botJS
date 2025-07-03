@@ -1,6 +1,6 @@
 'use strict';
 (async () => {
-    const version = '2.0 (alpha)';
+    const version = '2.0.0';
     const botRun = {
         'canceled': false,
         'pages': [],
@@ -11,6 +11,8 @@
         'nsChecks': 0,
     };
     
+    document.querySelector('h1').innerText = `botJS, version ${version}`;
+    console.log(`botJS, version ${version}`);
     const lag = 3;
     const editsPerMinute = 80;
     const continueLag = 5000;

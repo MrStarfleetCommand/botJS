@@ -1,6 +1,6 @@
 'use strict';
 (async () => {
-    const version = '2.1.4';
+    const version = '2.1.5 (alpha)';
     const botRun = {
         'canceled': false,
         'pages': [],
@@ -102,16 +102,16 @@
     log(JSON.stringify(loginData));
     console.log(loginData);
     
-    if (loginData.login){
-        log(loginData.login.result);
+    if (loginData.error){
+        log(`Error: ${typeof loginData}`, 'error');
     }
     
     if (loginData.warnings){
         log(`Warning: ${loginData.warnings.main['*']}`, 'warn');
     }
     
-    if (loginData.error){
-        log(`Error: ${typeof loginData}`, 'error');
+    if (loginData.login){
+        log(loginData.login.result);
     }
     
     $('#myModal').on('submit', submitForm);
@@ -119,7 +119,6 @@
     $('#myModalCleanup').on('click', cleanup);
     $('#myModalMove').on('click', move);
     $('#myModalCancel').on('click', cancel);
-    $('#myModalClose').on('click', close);
     
     function submitForm(e){
         e.preventDefault();
@@ -147,11 +146,6 @@
         reset();
         botRun.canceled = true;
         log('Cancelling bot run . . .');
-    }
-    
-    function close(){
-        cancel();
-        log('Closing bot interface . . .');
     }
     
     async function initalizer(){

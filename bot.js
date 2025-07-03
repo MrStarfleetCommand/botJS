@@ -147,7 +147,7 @@
         log('Closing bot interface . . .');
     }
     
-    function initalizer(){
+    async function initalizer(){
         if (botRun.canceled){
             return;
         }
@@ -212,7 +212,7 @@
         });
     }
     
-    function searchWiki(ns, continueParameter){
+    async function searchWiki(ns, continueParameter){
         const searchWikiParams = {
             'generator': 'allpages',
             'gapnamespace': ns,
@@ -394,7 +394,7 @@
         submitAction(params, i);
     }
     
-    function submitAction(params, i){
+    async function submitAction(params, i){
         if (botRun.canceled){
             return;
         }

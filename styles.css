@@ -1,17 +1,22 @@
 body{
     margin: 1em;
+    font-family: sans-serif;
 }
 textarea{
     width: calc(100% - 0.5em);
     font-family: monospace;
 }
-button{
-    margin-right: 10px;
+button:not([disabled]){
     cursor: pointer;
 }
 label{
+    margin-top: 0.5em;
     display: block;
 }
+textarea + button{
+    margin-top: 0.5em;
+}
+
 @media screen and (prefers-color-scheme: dark){
     body{
         background-color: #111111;

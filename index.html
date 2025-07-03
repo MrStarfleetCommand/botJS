@@ -3,12 +3,13 @@
     <head>
         <title>botJS</title>
         <meta charset="utf-8">
+        <link rel="stylesheet" href="styles.css">
     </head>
     <body>
         <form id="myModal">
             <!-- header -->
             <h1>botJS</h1>
-            <!-- input fields -->
+            <!-- wiki selection fields -->
             <label for="myModalWiki">Wiki</label>
             <select id="myModalWiki">
                 <option value="">Select wiki</option>
@@ -23,12 +24,14 @@
                 <option value="https://nicktoonsglobearchives.fandom.com">Nicktoons: GLOBE Archives</option>
                 <option value="https://pbs-kids-sprout-universal-kids-sa.fandom.com">PBS Kids Sprout/Universal Kids Schedule Archive</option>
             </select>
+            <button id="myModalWiki">Continue</button>
+            <!-- bot edit fields -->
             <label for="myModalFind">Find</label>
             <textarea id="myModalFind" rows="4"></textarea>
             <label for="myModalReplace">Replace</label>
             <textarea id="myModalReplace" rows="4"></textarea>
             <label for="myModalNamespaces">Namespaces</label>
-            <textarea id="myModalNamespaces" rows="4">${validNamespaces.join('\n')}</textarea>
+            <textarea id="myModalNamespaces" rows="4"></textarea>
             <label for="myModalSummary">Edit summary</label>
             <textarea id="myModalSummary" rows="4"></textarea>
             <!-- log -->
@@ -40,5 +43,7 @@
             <button id="myModalMove">Move</button>
             <button id="myModalCancel">Cancel</button>
             <button id="myModalClose">Close</button>
+            <!-- script -->
+            <script src="bot.js"></script>
     </body>
 </html>

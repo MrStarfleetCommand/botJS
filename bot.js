@@ -35,7 +35,9 @@
         wiki = wikiDropDown.value;
     });
     
-    while(!wiki){}
+    while(!wiki){
+        setTimeout(() => {}, 100);
+    }
     
     class Api {
         constructor(){

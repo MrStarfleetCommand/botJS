@@ -1,6 +1,6 @@
 'use strict';
 (async () => {
-    const version = '2.1.7 (alpha)';
+    const version = '2.1.8 (alpha)';
     const botRun = {
         'canceled': false,
         'pages': [],
@@ -48,6 +48,8 @@
             'type': 'csrf|login',
         });
         
+        console.log(tokenData);
+        console.log(tokenData.query.tokens.logintoken);
         const loginData = await api.post({
             'action': 'login',
             'lgname': `${username}@${botName}`,

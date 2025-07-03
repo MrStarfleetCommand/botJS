@@ -35,6 +35,12 @@
         wiki = wikiDropDown.value;
     });
     
+    const intervalID = setInterval(() => {
+        if (wiki){
+            clearInterval(intervalID);
+        }
+    }, 100);
+    
     class Api {
         constructor(){
             this.get = async (params, baseURL = wiki) => {

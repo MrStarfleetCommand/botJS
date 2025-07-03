@@ -1,6 +1,6 @@
 'use strict';
 (async () => {
-    const version = '2.1.8 (alpha)';
+    const version = '2.1.9 (alpha)';
     const botRun = {
         'canceled': false,
         'pages': [],
@@ -98,7 +98,12 @@
                 
                 const queryString = new URLSearchParams(params).toString();
                 const url = `${baseURL}/api.php?${queryString}`;
-                const response = await fetch(url, {'method': 'POST'});
+                const headers = new Headers();
+                headers.set('Content-Type', 'text/html; charset=utf-8');
+                const response = await fetch(url, {
+                    'method': 'POST',
+                    'headers': headers,
+                });
                 const data = await response.json();
                 return data;
             };

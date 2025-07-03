@@ -1,8 +1,8 @@
-#myModal{
-    padding: 10px;
+body{
+    margin: 1em;
 }
 textarea{
-    width: 100%;
+    width: calc(100% - 0.5em);
     font-family: monospace;
 }
 button{
@@ -13,8 +13,20 @@ label{
     display: block;
 }
 @media screen and (prefers-color-scheme: dark){
-    html{
+    body{
         background-color: #111111;
         color: #ffffff;
+    }
+    select,
+    button,
+    textarea{
+        background-color: #222222;
+        color: #ffffff;
+    }
+    select[disabled],
+    button[disabled],
+    textarea[disabled]{
+        background-color: #444444;
+        color: #dddddd;
     }
 }

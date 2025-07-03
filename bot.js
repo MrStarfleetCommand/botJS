@@ -1,6 +1,6 @@
 'use strict';
 (async () => {
-    const version = '2.1.2';
+    const version = '2.1.3';
     const botRun = {
         'canceled': false,
         'pages': [],
@@ -33,16 +33,9 @@
         $('#myModalWiki, #myModalPickWiki').attr('disabled', true);
         reset();
         wiki = wikiDropDown.value;
-        console.log(wiki);
     });
     
-    console.log('Before `wiki` is set');
-    const intervalID = setInterval(() => {
-        if (wiki){
-            clearInterval(intervalID);
-        }
-    }, 100);
-    console.log('After `wiki` is set');
+    while(!wiki){}
     
     class Api {
         constructor(){

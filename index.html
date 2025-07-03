@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>botJS</title>
+        <meta charset="utf-8">
+    </head>
+    <body>
+        <form id="myModal">
+            <!-- header -->
+            <h1>botJS, version ${version}</h1>
+            <!-- input fields -->
+            <label for="myModalFind">Find</label>
+            <textarea id="myModalFind" rows="4"></textarea>
+            <label for="myModalReplace">Replace</label>
+            <textarea id="myModalReplace" rows="4"></textarea>
+            <label for="myModalNamespaces">Namespaces</label>
+            <textarea id="myModalNamespaces" rows="4">${validNamespaces.join('\n')}</textarea>
+            <label for="myModalSummary">Edit summary</label>
+            <textarea id="myModalSummary" rows="4"></textarea>
+            <!-- log -->
+            <label for="myModalLog">Log</label>
+            <textarea id="myModalLog" rows="4" disabled></textarea>
+            <!-- buttons -->
+            <button id="myModalEdit">Edit</button>
+            <button id="myModalCleanup">Cleanup</button>
+            <button id="myModalMove">Move</button>
+            <button id="myModalCancel">Cancel</button>
+            <button id="myModalClose">Close</button>
+    </body>
+</html>

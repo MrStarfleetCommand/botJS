@@ -20,7 +20,7 @@
     
     class Api {
         constructor(){
-            this.get = (params) => {
+            this.get = async (params, baseURL = wiki) => {
                 params.format = 'json';
                 params.origin = '*';
                 if (!params.action){
@@ -28,12 +28,11 @@
                 }
                 
                 const queryString = new URLSearchParams(params).toString();
-                const url = `${wiki}/api.php?${queryString}`;
+                const url = `${baseURL}/api.php?${queryString}`;
                 const response = await fetch(url);
-                const data = await response.json();
-                return data;
+                return response.json();
             };
-            this.post = (params) => {
+            this.post = async params => {
                 params.format = 'json';
                 params.origin = '*';
                 if (!params.action){
@@ -43,8 +42,7 @@
                 const queryString = new URLSearchParams(params).toString();
                 const url = `${wiki}/api.php?${queryString}`;
                 const response = await fetch(url, {'method': 'POST'});
-                const data = await response.json();
-                return data;
+                return response.json();
             };
         }
     }
@@ -74,16 +72,6 @@
     
     const botName = prompt('Enter your bot name');
     const botPassword = prompt('Enter your bot password');
-
-
-
-
-
-
-
-
-    
-
     
     api.get({
         'meta': 'tokens',
@@ -94,7 +82,6 @@
             'lgname': botName,
             'lgpassword': botPassword,
             'lgtoken': tokenData.query.tokens.logintoken,
-            // 'assert': 'bot',
         }).then(data => {
             console.log(data);
             createModal();
@@ -170,8 +157,7 @@
         botRun.nsList = nsAll.filter((ns) => validNamespaces.indexOf(ns) >= 0);
         
         if (!botRun.monolith && botRun.mode !== 'move'){
-            $.getJSON('https://community.fandom.com/api.php?callback=?', {
-                'action': 'query',
+            api.get({
                 'generator': 'allpages',
                 'gapfrom': 'Mr. Starfleet Command/bot.json',
                 'gapto': 'Mr. Starfleet Command/bot.json',
@@ -180,8 +166,7 @@
                 'rvprop': 'content',
                 'rvslots': 'main',
                 'formatversion': 2,
-                'format': 'json',
-            }).done((output) => {
+            }, 'https://community.fandom.com').then(output => {
                 const rev = output.query.pages[0].revisions[0];
                 botRun.monolith = JSON.parse(rev.slots.main.content);
                 nsLooper();
@@ -233,7 +218,7 @@
             'gapcontinue': continueParameter,
         };
         
-        api.get(searchWikiParams).done((result) => {
+        api.get(searchWikiParams).then(result => {
             if (result.warnings){
                 log(`Warning: ${result.warnings.main['*']}`, 'warn');
             }
@@ -363,6 +348,7 @@
                 'reason': editSummary,
                 'noredirect': 1,
                 'maxlag': lag,
+                'assert': 'bot',
             };
         } else {
             const text = botRun.pages[i].content;
@@ -391,6 +377,7 @@
                 'bot': 1,
                 'summary': editSummary,
                 'maxlag': lag,
+                'assert': 'bot',
             };
         }
         
@@ -402,7 +389,7 @@
             return;
         }
         
-        api.postWithToken('csrf', params).done((data) => {
+        api.postWithToken('csrf', params).then(data => {
             /*
             {
                 "edit": {

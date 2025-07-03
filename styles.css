@@ -1,11 +1,20 @@
 #myModal{
     padding: 10px;
 }
-#myModal textarea{
+textarea{
     width: 100%;
     font-family: monospace;
 }
-#myModal button{
+button{
     margin-right: 10px;
     cursor: pointer;
+}
+label{
+    display: block;
+}
+@media screen and (prefers-color-scheme: dark){
+    html{
+        background-color: #111111;
+        color: #ffffff;
+    }
 }

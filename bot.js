@@ -14,8 +14,42 @@
     const lag = 3;
     const editsPerMinute = 80;
     const continueLag = 5000;
-    const api = new mw.Api();
     const username = 'Mr. Botfleet Command';
+    const wikiDropDown = document.getElementById('myModalWiki');
+    const wiki = wikiDropDown.addEventListener('change', event => event.target.value);
+    
+    class Api {
+        constructor(){
+            this.get = (params) => {
+                params.format = 'json';
+                params.origin = '*';
+                if (!params.action){
+                    params.action = 'query';
+                }
+                
+                const queryString = new URLSearchParams(params).toString();
+                const url = `${wiki}/api.php?${queryString}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                return data;
+            };
+            this.post = (params) => {
+                params.format = 'json';
+                params.origin = '*';
+                if (!params.action){
+                    params.action = 'query';
+                }
+                
+                const queryString = new URLSearchParams(params).toString();
+                const url = `${wiki}/api.php?${queryString}`;
+                const response = await fetch(url, {'method': 'POST'});
+                const data = await response.json();
+                return data;
+            };
+        }
+    }
+    
+    const api = new Api();
     const nsObject = mw.config.get('wgFormattedNamespaces');
     const validNamespaces = Object.keys(nsObject).filter((ns) => ns >= 0);
     const formElements = [
@@ -46,33 +80,6 @@
 
 
 
-class Api {
-    constructor(){
-        this.get = (params) => {
-            params.format = 'json';
-            if (!params.action){
-                params.action = 'query';
-            }
-            
-            const queryString = new URLSearchParams(params).toString();
-            return fetch(`${wiki}/api.php?${queryString}`);
-        };
-    }
-}
-
-const api = new Api();
-
-
-    
-
-
-
-    api({
-        
-    }).then(() => {
-        
-    });
-
 
 
     
@@ -81,14 +88,14 @@ const api = new Api();
     api.get({
         'meta': 'tokens',
         'type': 'login',
-    }).done(tokenData => {
+    }).then(tokenData => {
         api.post({
             'action': 'login',
             'lgname': botName,
             'lgpassword': botPassword,
             'lgtoken': tokenData.query.tokens.logintoken,
             // 'assert': 'bot',
-        }).done(data => {
+        }).then(data => {
             console.log(data);
             createModal();
             log(data.login.result);

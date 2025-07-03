@@ -1,5 +1,5 @@
 'use strict';
-(() => {
+(async () => {
     const version = '2.0 (alpha)';
     const botRun = {
         'canceled': false,
@@ -30,7 +30,8 @@
                 const queryString = new URLSearchParams(params).toString();
                 const url = `${baseURL}/api.php?${queryString}`;
                 const response = await fetch(url);
-                return response.json();
+                const data = await response.json();
+                return data;
             };
             this.post = async params => {
                 params.format = 'json';
@@ -42,14 +43,18 @@
                 const queryString = new URLSearchParams(params).toString();
                 const url = `${wiki}/api.php?${queryString}`;
                 const response = await fetch(url, {'method': 'POST'});
-                return response.json();
+                const data = await response.json();
+                return data;
             };
         }
     }
     
     const api = new Api();
-    const nsObject = mw.config.get('wgFormattedNamespaces');
-    const validNamespaces = Object.keys(nsObject).filter((ns) => ns >= 0);
+    const nsListAll = await api.get({
+        'meta': 'siteinfo',
+        'siprop': 'namespaces',
+    });
+    const validNamespaces = Object.keys(nsListAll.query.namespaces).filter(ns => ns >= 0);
     const formElements = [
         '#myModalFind',
         '#myModalReplace',
@@ -72,32 +77,33 @@
     
     const botName = prompt('Enter your bot name');
     const botPassword = prompt('Enter your bot password');
-    
-    api.get({
+    const tokenData = await api.get({
         'meta': 'tokens',
-        'type': 'login',
-    }).then(tokenData => {
-        api.post({
-            'action': 'login',
-            'lgname': botName,
-            'lgpassword': botPassword,
-            'lgtoken': tokenData.query.tokens.logintoken,
-        }).then(data => {
-            console.log(data);
-            createModal();
-            log(data.login.result);
-            log(JSON.stringify(data));
-            
-            if (data.warnings){
-                log(`Warning: ${data.warnings.main['*']}`, 'warn');
-            }
-        }).fail((code, data) => {
-            createModal();
-            log(`Error: ${code}: ${typeof data}`, 'error');
-            console.log(data);
-            log(JSON.stringify(data));
-        });
+        'type': 'csrf|login',
     });
+    
+    const loginData = await api.post({
+        'action': 'login',
+        'lgname': botName,
+        'lgpassword': botPassword,
+        'lgtoken': tokenData.query.tokens.logintoken,
+    });
+    
+    createModal();
+    log(JSON.stringify(loginData));
+    console.log(loginData);
+    
+    if (loginData.login){
+        log(loginData.login.result);
+    }
+    
+    if (loginData.warnings){
+        log(`Warning: ${loginData.warnings.main['*']}`, 'warn');
+    }
+    
+    if (loginData.error){
+        log(`Error: ${typeof loginData}`, 'error');
+    }
     
     function createModal(){
         $('#myModal').on('submit', submitForm);
@@ -157,7 +163,7 @@
         botRun.nsList = nsAll.filter((ns) => validNamespaces.indexOf(ns) >= 0);
         
         if (!botRun.monolith && botRun.mode !== 'move'){
-            api.get({
+            const cleanupFile = await api.get({
                 'generator': 'allpages',
                 'gapfrom': 'Mr. Starfleet Command/bot.json',
                 'gapto': 'Mr. Starfleet Command/bot.json',
@@ -166,11 +172,11 @@
                 'rvprop': 'content',
                 'rvslots': 'main',
                 'formatversion': 2,
-            }, 'https://community.fandom.com').then(output => {
-                const rev = output.query.pages[0].revisions[0];
-                botRun.monolith = JSON.parse(rev.slots.main.content);
-                nsLooper();
-            });
+            }, 'https://community.fandom.com');
+            
+            const rev = cleanupFile.query.pages[0].revisions[0];
+            botRun.monolith = JSON.parse(rev.slots.main.content);
+            nsLooper();
         } else {
             nsLooper();
         }
@@ -218,86 +224,95 @@
             'gapcontinue': continueParameter,
         };
         
-        api.get(searchWikiParams).then(result => {
-            if (result.warnings){
-                log(`Warning: ${result.warnings.main['*']}`, 'warn');
+        const searchBatch = await api.get(searchWikiParams);
+        
+        if (searchBatch.error){
+            console.error(searchWikiParams);
+            if (searchBatch.error.code === 'http'){
+                log(`Error: ${searchBatch.error.code}: ${JSON.stringify(searchBatch)}`, 'error');
+            } else {
+                log(`Error: ${searchBatch.error.code}: ${typeof searchBatch}`, 'error');
             }
-            
-            if (result.query){
-                result.query.pages.forEach((entry) => {
-                    if (botRun.canceled){
-                        return;
-                    }
+        }
+        
+        if (searchBatch.warnings){
+            log(`Warning: ${searchBatch.warnings.main['*']}`, 'warn');
+        }
+        
+        if (searchBatch.query){
+            searchBatch.query.pages.forEach((entry) => {
+                if (botRun.canceled){
+                    return;
+                }
+                
+                botRun.cleanup = [];
+                const pageTitle = entry.title;
+                const pageContent = entry.revisions[0].slots.main.content;
+                const cm = entry.revisions[0].slots.main.contentmodel;
+                const deniedBotsRegexp = /\{\{[Bb]ots\|deny=.+?\}\}/;
+                const denySplit = pageContent.split(/\{\{[Bb]ots\|deny=/);
+                const allowedBotsRegexp = /\{\{[Bb]ots\|allow=.+?\}\}/;
+                const allowSplit = pageContent.split(/\{\{[Bb]ots\|allow=/);
+                const nobots1 = /\{\{[Nn]obots\}\}/;
+                const nobots2 = /\{\{[Bb]ots\|allow=none\}\}/;
+                const nobots3 = /\{\{[Bb]ots\|deny=all\}\}/;
+                
+                const deniedBots =
+                    (pageContent.search(deniedBotsRegexp) !== -1) ?
+                    denySplit[1].split('}}')[0].split(',')
+                    : [];
+                
+                const allowedBots =
+                    (pageContent.search(allowedBotsRegexp) !== -1) ?
+                    allowSplit[1].split('}}')[0].split(',')
+                    : [username];
+                
+                const notNoBots = pageContent.search(nobots1) === -1;
+                const notBotsAllowNone = pageContent.search(nobots2) === -1;
+                const notBotsDenyAll = pageContent.search(nobots3) === -1;
+                const botNotDenied = deniedBots.indexOf(username) === -1;
+                const botAllowed = allowedBots.indexOf(username) !== -1;
+                const isWikitext = cm === 'wikitext';
+                const authorizedBot =
+                    notNoBots &&
+                    notBotsAllowNone &&
+                    notBotsDenyAll &&
+                    botNotDenied &&
+                    botAllowed;
+                let appears;
+                
+                function cleanupTally(pair){
+                    const i = pageContent.search(RegExp(pair.find, 'gm'));
+                    botRun.cleanup.push(i);
+                }
+                
+                if (botRun.mode === 'edit'){
+                    appears = pageContent.search(botRun.find) !== -1;
+                } else if (botRun.mode === 'cleanup'){
+                    botRun.library[ns].forEach(cleanupTally);
                     
-                    botRun.cleanup = [];
-                    const pageTitle = entry.title;
-                    const pageContent = entry.revisions[0].slots.main.content;
-                    const cm = entry.revisions[0].slots.main.contentmodel;
-                    const deniedBotsRegexp = /\{\{[Bb]ots\|deny=.+?\}\}/;
-                    const denySplit = pageContent.split(/\{\{[Bb]ots\|deny=/);
-                    const allowedBotsRegexp = /\{\{[Bb]ots\|allow=.+?\}\}/;
-                    const allowSplit = pageContent.split(/\{\{[Bb]ots\|allow=/);
-                    const nobots1 = /\{\{[Nn]obots\}\}/;
-                    const nobots2 = /\{\{[Bb]ots\|allow=none\}\}/;
-                    const nobots3 = /\{\{[Bb]ots\|deny=all\}\}/;
+                    appears = !botRun.cleanup.every((x) => x === -1);
+                } else {
+                    appears = pageTitle.search(botRun.find) !== -1;
+                }
+                
+                if (isWikitext && appears && authorizedBot){
+                    const pageInformation = {
+                        fullPageName: pageTitle,
+                        content: pageContent,
+                        namespace: ns,
+                    };
                     
-                    const deniedBots =
-                        (pageContent.search(deniedBotsRegexp) !== -1) ?
-                        denySplit[1].split('}}')[0].split(',')
-                        : [];
-                    
-                    const allowedBots =
-                        (pageContent.search(allowedBotsRegexp) !== -1) ?
-                        allowSplit[1].split('}}')[0].split(',')
-                        : [username];
-                    
-                    const notNoBots = pageContent.search(nobots1) === -1;
-                    const notBotsAllowNone = pageContent.search(nobots2) === -1;
-                    const notBotsDenyAll = pageContent.search(nobots3) === -1;
-                    const botNotDenied = deniedBots.indexOf(username) === -1;
-                    const botAllowed = allowedBots.indexOf(username) !== -1;
-                    const isWikitext = cm === 'wikitext';
-                    const authorizedBot =
-                        notNoBots &&
-                        notBotsAllowNone &&
-                        notBotsDenyAll &&
-                        botNotDenied &&
-                        botAllowed;
-                    let appears;
-                    
-                    function cleanupTally(pair){
-                        const i = pageContent.search(RegExp(pair.find, 'gm'));
-                        botRun.cleanup.push(i);
-                    }
-                    
-                    if (botRun.mode === 'edit'){
-                        appears = pageContent.search(botRun.find) !== -1;
-                    } else if (botRun.mode === 'cleanup'){
-                        botRun.library[ns].forEach(cleanupTally);
-                        
-                        appears = !botRun.cleanup.every((x) => x === -1);
-                    } else {
-                        appears = pageTitle.search(botRun.find) !== -1;
-                    }
-                    
-                    if (isWikitext && appears && authorizedBot){
-                        const pageInformation = {
-                            fullPageName: pageTitle,
-                            content: pageContent,
-                            namespace: ns,
-                        };
-                        
-                        botRun.pages.push(pageInformation);
-                    }
-                });
-            }
+                    botRun.pages.push(pageInformation);
+                }
+            });
             
             if (botRun.canceled){
                 return;
             }
             
-            if (result.continue){
-                searchWiki(ns, result.continue.gapcontinue);
+            if (searchBatch.continue){
+                searchWiki(ns, searchBatch.continue.gapcontinue);
             } else {
                 botRun.nsChecks++;
             }
@@ -317,14 +332,7 @@
                     resultsLoop(botRun.iValue++);
                 }
             }
-        }).fail((code, data) => {
-            console.error(searchWikiParams);
-            if (code === 'http'){
-                log(`Error: ${code}: ${JSON.stringify(data)}`, 'error');
-            } else {
-                log(`Error: ${code}: ${typeof data}`, 'error');
-            }
-        });
+        }
     }
     
     function resultsLoop(i){
@@ -349,6 +357,7 @@
                 'noredirect': 1,
                 'maxlag': lag,
                 'assert': 'bot',
+                'token': tokenData.query.tokens.csrftoken,
             };
         } else {
             const text = botRun.pages[i].content;
@@ -378,6 +387,7 @@
                 'summary': editSummary,
                 'maxlag': lag,
                 'assert': 'bot',
+                'token': tokenData.query.tokens.csrftoken,
             };
         }
         
@@ -389,73 +399,74 @@
             return;
         }
         
-        api.postWithToken('csrf', params).then(data => {
-            /*
-            {
-                "edit": {
-                    "result": "Success",
-                    "pageid": 187753,
-                    "title": "User talk:Andrew.estes27",
-                    "contentmodel": "wikitext",
-                    "oldrevid": 3178066,
-                    "newrevid": 3209364,
-                    "newtimestamp": "2024-07-25T04:10:23Z"
-                },
-                "move": {
-                    "from": "File:2025-01-05 0000am Whatever.png",
-                    "to": "File:2025-01-05 0000am Who cares.png",
-                    "reason": "bot: punctuation"
-                }
+        const actionData = await api.post(params);
+        /*
+        {
+            "edit": {
+                "result": "Success",
+                "pageid": 187753,
+                "title": "User talk:Andrew.estes27",
+                "contentmodel": "wikitext",
+                "oldrevid": 3178066,
+                "newrevid": 3209364,
+                "newtimestamp": "2024-07-25T04:10:23Z"
+            },
+            "move": {
+                "from": "File:2025-01-05 0000am Whatever.png",
+                "to": "File:2025-01-05 0000am Who cares.png",
+                "reason": "bot: punctuation"
             }
-            */
-            
-            if (data.warnings){
-                log(`Warning: ${data.warnings.main['*']}`, 'warn');
-            }
-            
-            if (data.edit){
-                log(`${i + 1}/${botRun.pages.length}: ${data.edit.result}: "${data.edit.title}"`);
-            } else if (data.move){
-                log(`${i + 1}/${botRun.pages.length}: "${data.move.from}" to "${data.move.to}"`);
-            } else {
-                log(JSON.stringify(data));
-            }
-            
-            next(0, i);
-        }).fail((code, data) => {
+        }
+        */
+        
+        if (actionData.error){
             const title = (botRun.mode === 'move') ? params.from : params.title;
-            const errorPrefix = `${i + 1}/${botRun.pages.length}: Error: ${code}: "${title}": `;
+            const errorPrefix = `${i + 1}/${botRun.pages.length}: Error: ${actionData.error.code}: "${title}": `;
             
-            if (code === 'maxlag'){
-                log(errorPrefix + data.error.info, 'error');
+            if (actionData.error.code === 'maxlag'){
+                log(errorPrefix + actionData.error.info, 'error');
                 resubmit(params, i);
-            } else if (code === 'protectedpage'){
-                log(errorPrefix + data.error.info, 'error');
+            } else if (actionData.error.code === 'protectedpage'){
+                log(errorPrefix + actionData.error.info, 'error');
                 next(continueLag, i);
-            } else if (code === 'ratelimited'){
-                log(errorPrefix + data.error.info, 'error');
+            } else if (actionData.error.code === 'ratelimited'){
+                log(errorPrefix + actionData.error.info, 'error');
                 resubmit(params, i);
-            } else if (code === 'http'){
-                log(errorPrefix + JSON.stringify(data), 'error');
+            } else if (actionData.error.code === 'http'){
+                log(errorPrefix + JSON.stringify(actionData), 'error');
                 resubmit(params, i);
-            } else if (code === 'permissiondenied'){
+            } else if (actionData.error.code === 'permissiondenied'){
                 log(errorPrefix + 'This page is in a protected namespace.', 'error');
                 next(continueLag, i);
-            } else if (code === 'readonly'){
-                log(errorPrefix + `${data.error.info} Reason: ${data.error.readonlyreason}`, 'error');
+            } else if (actionData.error.code === 'readonly'){
+                log(errorPrefix + `${actionData.error.info} Reason: ${actionData.error.readonlyreason}`, 'error');
                 resubmit(params, i);
-            } else if (code === 'articleexists'){
-                log(errorPrefix + data.error.info, 'error');
+            } else if (actionData.error.code === 'articleexists'){
+                log(errorPrefix + actionData.error.info, 'error');
                 next(continueLag, i);
-            } else if (code === 'editconflict'){
-                log(errorPrefix + JSON.stringify(data), 'error');
-            } else if (code === 'The_page_you_wanted_to_save_was_blocked_by_the_spam_filter__br___This_is_probably_caused_by_a_blacklisted_link_or_pagename__p_Block_ID__492211__p_Your_content_triggered_the_spam_filter_for_the_following_reason_____Due_to___w_Help_Spam_spam_issues____URL_shorteners_are_not_allowed_in_Fandom_network__Please_replace_all_URL_shorteners_in_the_entire_page_for_process_the_editing______If_you_think_this_is_wrong__please_contact_us___w_c_vstf_Report_Spam_filter_problems_here____Please__provide_a_copy_of_this_message_when_reporting_any_problem_'){
+            } else if (actionData.error.code === 'editconflict'){
+                log(errorPrefix + JSON.stringify(actionData), 'error');
+            } else if (actionData.error.code === 'The_page_you_wanted_to_save_was_blocked_by_the_spam_filter__br___This_is_probably_caused_by_a_blacklisted_link_or_pagename__p_Block_ID__492211__p_Your_content_triggered_the_spam_filter_for_the_following_reason_____Due_to___w_Help_Spam_spam_issues____URL_shorteners_are_not_allowed_in_Fandom_network__Please_replace_all_URL_shorteners_in_the_entire_page_for_process_the_editing______If_you_think_this_is_wrong__please_contact_us___w_c_vstf_Report_Spam_filter_problems_here____Please__provide_a_copy_of_this_message_when_reporting_any_problem_'){
                 log(`${i + 1}/${botRun.pages.length}: Error: Spam filter: "${title}": Block ID #492211: URL shorteners present in wikitext`, 'error');
                 next(continueLag, i);
             } else {
-                log(errorPrefix + typeof data, 'error');
+                log(errorPrefix + typeof actionData, 'error');
             }
-        });
+        }
+        
+        if (actionData.warnings){
+            log(`Warning: ${actionData.warnings.main['*']}`, 'warn');
+        }
+        
+        if (actionData.edit){
+            log(`${i + 1}/${botRun.pages.length}: ${actionData.edit.result}: "${actionData.edit.title}"`);
+            next(0, i);
+        } else if (actionData.move){
+            log(`${i + 1}/${botRun.pages.length}: "${actionData.move.from}" to "${actionData.move.to}"`);
+            next(0, i);
+        } else {
+            log(JSON.stringify(actionData));
+        }
     }
     
     function next(delay, i){

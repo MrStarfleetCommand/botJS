@@ -1,6 +1,6 @@
 'use strict';
 (async () => {
-    const version = '2.0.0';
+    const version = '2.0.1';
     const botRun = {
         'canceled': false,
         'pages': [],
@@ -18,7 +18,9 @@
     const continueLag = 5000;
     const username = 'Mr. Botfleet Command';
     const wikiDropDown = document.getElementById('myModalWiki');
-    const wiki = wikiDropDown.addEventListener('change', event => event.target.value);
+    
+    let wiki;
+    wikiDropDown.addEventListener('change', event => wiki = event.target.value)
     
     class Api {
         constructor(){

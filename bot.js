@@ -1,6 +1,6 @@
 'use strict';
 (async () => {
-    const version = '2.0.2';
+    const version = '2.1.0';
     const botRun = {
         'canceled': false,
         'pages': [],
@@ -13,14 +13,27 @@
     
     document.querySelector('h1').innerText = `botJS, version ${version}`;
     console.log(`botJS, version ${version}`);
+    let wiki;
     const lag = 3;
     const editsPerMinute = 80;
     const continueLag = 5000;
-    const username = 'Mr. Botfleet Command';
     const wikiDropDown = document.getElementById('myModalWiki');
+    const formElements = [
+        '#myModalFind',
+        '#myModalReplace',
+        '#myModalNamespaces',
+        '#myModalSummary',
+        '#myModalEdit',
+        '#myModalCleanup',
+        '#myModalMove',
+    ];
     
-    let wiki;
-    wikiDropDown.addEventListener('change', event => wiki = event.target.value);
+    $(formElements.join(', ')).attr('disabled', true);
+    $('#myModalPickWiki').on('click', () => {
+        $('#myModalWiki, #myModalPickWiki').attr('disabled', true);
+        reset();
+        wiki = wikiDropDown.value;
+    });
     
     class Api {
         constructor(){
@@ -59,15 +72,7 @@
         'siprop': 'namespaces',
     });
     const validNamespaces = Object.keys(nsListAll.query.namespaces).filter(ns => ns >= 0);
-    const formElements = [
-        '#myModalFind',
-        '#myModalReplace',
-        '#myModalNamespaces',
-        '#myModalSummary',
-        '#myModalEdit',
-        '#myModalCleanup',
-        '#myModalMove',
-    ];
+    document.getElementById('myModalNamespaces').value = validNamespaces.join('\n');
     
     function log(value, type = 'log'){
         $('#myModalLog').prepend(`${value}\n`);
@@ -79,6 +84,7 @@
         $(formElements.join(', ')).removeAttr('disabled');
     }
     
+    const username = prompt('Enter your bot\'s username');
     const botName = prompt('Enter your bot name');
     const botPassword = prompt('Enter your bot password');
     const tokenData = await api.get({
@@ -88,12 +94,11 @@
     
     const loginData = await api.post({
         'action': 'login',
-        'lgname': botName,
+        'lgname': `${username}@${botName}`,
         'lgpassword': botPassword,
         'lgtoken': tokenData.query.tokens.logintoken,
     });
     
-    createModal();
     log(JSON.stringify(loginData));
     console.log(loginData);
     
@@ -109,14 +114,12 @@
         log(`Error: ${typeof loginData}`, 'error');
     }
     
-    function createModal(){
-        $('#myModal').on('submit', submitForm);
-        $('#myModalEdit').on('click', edit);
-        $('#myModalCleanup').on('click', cleanup);
-        $('#myModalMove').on('click', move);
-        $('#myModalCancel').on('click', cancel);
-        $('#myModalClose').on('click', close);
-    }
+    $('#myModal').on('submit', submitForm);
+    $('#myModalEdit').on('click', edit);
+    $('#myModalCleanup').on('click', cleanup);
+    $('#myModalMove').on('click', move);
+    $('#myModalCancel').on('click', cancel);
+    $('#myModalClose').on('click', close);
     
     function submitForm(e){
         e.preventDefault();
@@ -164,7 +167,7 @@
         botRun.find = RegExp($('#myModalFind').val(), 'gm');
         botRun.replace = $('#myModalReplace').val();
         botRun.summary = $('#myModalSummary').val();
-        botRun.nsList = nsAll.filter((ns) => validNamespaces.indexOf(ns) >= 0);
+        botRun.nsList = nsAll.filter(ns => validNamespaces.indexOf(ns) >= 0);
         
         if (!botRun.monolith && botRun.mode !== 'move'){
             const cleanupFile = await api.get({
@@ -198,7 +201,7 @@
             botRun.library['-1'] = localAll ? botRun.library['-1'] : catchAll;
         }
         
-        botRun.nsList.forEach((ns) => {
+        botRun.nsList.forEach(ns => {
             if (botRun.mode !== 'move' && local[ns] && crossWiki[ns]){
                 const nsLib = local[ns].concat(crossWiki[ns]);
                 botRun.library[ns] = botRun.library['-1'].concat(nsLib);
@@ -242,7 +245,7 @@
         }
         
         if (searchBatch.query){
-            searchBatch.query.pages.forEach((entry) => {
+            searchBatch.query.pages.forEach(entry => {
                 if (botRun.canceled){
                     return;
                 }
@@ -293,7 +296,7 @@
                 } else if (botRun.mode === 'cleanup'){
                     botRun.library[ns].forEach(cleanupTally);
                     
-                    appears = !botRun.cleanup.every((x) => x === -1);
+                    appears = !botRun.cleanup.every(x => x === -1);
                 } else {
                     appears = pageTitle.search(botRun.find) !== -1;
                 }
@@ -368,7 +371,7 @@
             const cleanupMode = botRun.mode === 'cleanup';
             let finalText = newText;
             
-            botRun.library[botRun.pages[i].namespace].forEach((pair) => finalText = finalText.replace(RegExp(pair.find, 'gm'), pair.replace));
+            botRun.library[botRun.pages[i].namespace].forEach(pair => finalText = finalText.replace(RegExp(pair.find, 'gm'), pair.replace));
             
             if (finalText !== newText && editMode && botRun.summary){
                 editSummary = `bot: ${botRun.summary}, cleanup`;

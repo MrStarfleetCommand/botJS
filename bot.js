@@ -1,6 +1,6 @@
 'use strict';
 (async () => {
-    const version = '2.1.3';
+    const version = '2.1.4';
     const botRun = {
         'canceled': false,
         'pages': [],
@@ -34,10 +34,6 @@
         reset();
         wiki = wikiDropDown.value;
     });
-    
-    while(!wiki){
-        setTimeout(() => {}, 100);
-    }
     
     class Api {
         constructor(){

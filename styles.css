@@ -1,0 +1,11 @@
+#myModal{
+    padding: 10px;
+}
+#myModal textarea{
+    width: 100%;
+    font-family: monospace;
+}
+#myModal button{
+    margin-right: 10px;
+    cursor: pointer;
+}

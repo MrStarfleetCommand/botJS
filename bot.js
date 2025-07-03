@@ -1,6 +1,6 @@
 'use strict';
 (async () => {
-    const version = '2.1.5 (alpha)';
+    const version = '2.1.6 (alpha)';
     const botRun = {
         'canceled': false,
         'pages': [],
@@ -9,6 +9,7 @@
         'library': {},
         'mode': undefined,
         'nsChecks': 0,
+        'validNamespaces': [],
     };
     
     document.querySelector('h1').innerText = `botJS, version ${version}`;
@@ -31,8 +32,44 @@
     $(formElements.join(', ')).attr('disabled', true);
     $('#myModalPickWiki').on('click', () => {
         $('#myModalWiki, #myModalPickWiki').attr('disabled', true);
-        reset();
         wiki = wikiDropDown.value;
+        const nsListAll = await api.get({
+            'meta': 'siteinfo',
+            'siprop': 'namespaces',
+        });
+        botRun.validNamespaces = Object.keys(nsListAll.query.namespaces).filter(ns => ns >= 0);
+        document.getElementById('myModalNamespaces').value = botRun.validNamespaces.join('\n');
+        
+        const username = prompt('Enter your bot\'s username');
+        const botName = prompt('Enter your bot name');
+        const botPassword = prompt('Enter your bot password');
+        const tokenData = await api.get({
+            'meta': 'tokens',
+            'type': 'csrf|login',
+        });
+        
+        const loginData = await api.post({
+            'action': 'login',
+            'lgname': `${username}@${botName}`,
+            'lgpassword': botPassword,
+            'lgtoken': tokenData.query.tokens.logintoken,
+        });
+        
+        log(JSON.stringify(loginData));
+        console.log(loginData);
+        
+        if (loginData.error){
+            log(`Error: ${typeof loginData}`, 'error');
+        }
+        
+        if (loginData.warnings){
+            log(`Warning: ${loginData.warnings.main['*']}`, 'warn');
+        }
+        
+        if (loginData.login){
+            log(loginData.login.result);
+            reset();
+        }
     });
     
     class Api {
@@ -50,7 +87,7 @@
                 const data = await response.json();
                 return data;
             };
-            this.post = async params => {
+            this.post = async (params, baseURL = wiki) => {
                 params.format = 'json';
                 params.origin = '*';
                 if (!params.action){
@@ -58,7 +95,7 @@
                 }
                 
                 const queryString = new URLSearchParams(params).toString();
-                const url = `${wiki}/api.php?${queryString}`;
+                const url = `${baseURL}/api.php?${queryString}`;
                 const response = await fetch(url, {'method': 'POST'});
                 const data = await response.json();
                 return data;
@@ -67,12 +104,6 @@
     }
     
     const api = new Api();
-    const nsListAll = await api.get({
-        'meta': 'siteinfo',
-        'siprop': 'namespaces',
-    });
-    const validNamespaces = Object.keys(nsListAll.query.namespaces).filter(ns => ns >= 0);
-    document.getElementById('myModalNamespaces').value = validNamespaces.join('\n');
     
     function log(value, type = 'log'){
         $('#myModalLog').prepend(`${value}\n`);
@@ -82,36 +113,6 @@
     function reset(){
         botRun.mode = undefined;
         $(formElements.join(', ')).removeAttr('disabled');
-    }
-    
-    const username = prompt('Enter your bot\'s username');
-    const botName = prompt('Enter your bot name');
-    const botPassword = prompt('Enter your bot password');
-    const tokenData = await api.get({
-        'meta': 'tokens',
-        'type': 'csrf|login',
-    });
-    
-    const loginData = await api.post({
-        'action': 'login',
-        'lgname': `${username}@${botName}`,
-        'lgpassword': botPassword,
-        'lgtoken': tokenData.query.tokens.logintoken,
-    });
-    
-    log(JSON.stringify(loginData));
-    console.log(loginData);
-    
-    if (loginData.error){
-        log(`Error: ${typeof loginData}`, 'error');
-    }
-    
-    if (loginData.warnings){
-        log(`Warning: ${loginData.warnings.main['*']}`, 'warn');
-    }
-    
-    if (loginData.login){
-        log(loginData.login.result);
     }
     
     $('#myModal').on('submit', submitForm);
@@ -161,7 +162,7 @@
         botRun.find = RegExp($('#myModalFind').val(), 'gm');
         botRun.replace = $('#myModalReplace').val();
         botRun.summary = $('#myModalSummary').val();
-        botRun.nsList = nsAll.filter(ns => validNamespaces.indexOf(ns) >= 0);
+        botRun.nsList = nsAll.filter(ns => botRun.validNamespaces.indexOf(ns) >= 0);
         
         if (!botRun.monolith && botRun.mode !== 'move'){
             const cleanupFile = await api.get({
